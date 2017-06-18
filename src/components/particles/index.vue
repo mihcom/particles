@@ -8,19 +8,23 @@
   import TweenLite from 'gsap'
 
   import transparent from './assets/transparent.png'
-  import yellowHeart from './assets/heart-yellow.png'
-  import pinkHeart from './assets/heart-pink.png'
-  import greyHeart from './assets/heart-grey.png'
-
-  const hearts = [yellowHeart, pinkHeart, greyHeart]
 
   export default {
     mounted () {
-      this.renderParticles()
+      this.loadPandoraProducts()
+        .then(this.renderParticles)
     },
 
     methods: {
-      renderParticles () {
+      loadPandoraProducts () {
+        return new Promise((resolve, reject) => {
+          this.$http.get('https://www.pandora.net/en-us/feeds/products/json/')
+            .then(response => resolve(response.body.data.products.product))
+            .catch(reject)
+        })
+      },
+
+      renderParticles (products) {
         options.particles.shape.image.src = transparent
 
         particlesJS.particlesJS('particles', options)
@@ -29,12 +33,14 @@
           particles = pJS.particles.array
 
         setTimeout(() => {
-          particles.forEach(particle => this.customizeParticle(particle))
+          particles.forEach(particle => this.customizeParticle(products, particle))
         }, 1000)
       },
 
-      customizeParticle (particle) {
-        const random = Math.floor(Math.random() * hearts.length),
+      customizeParticle (products, particle) {
+        const random = Math.floor(Math.random() * products.length),
+          sku = products[random]['@id'],
+          productImageUrl = `http://static.pandora.net/consumer/jewellery/01/135x135/${sku}.png`,
           image = new Image(),
           opacityObject = {opacity: 0}
 
@@ -44,13 +50,13 @@
         })
 
         image.addEventListener('load', () => {
-          particle.customDraw = (canvasContext, x, y, width, height) => {
+          particle.customDraw = (canvasContext, x, y) => {
             canvasContext.globalAlpha = opacityObject.opacity
-            canvasContext.drawImage(image, x, y, width, height)
+            canvasContext.drawImage(image, x, y, image.naturalWidth, image.naturalHeight)
           }
         })
 
-        image.src = hearts[random]
+        image.src = productImageUrl
       }
     }
   }
